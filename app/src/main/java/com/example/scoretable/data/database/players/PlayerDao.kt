@@ -18,6 +18,9 @@ interface PlayerDao {
     @Update
     fun updateScore(score: GameScoreEntity)
 
-    @Query("SELECT * FROM ${GameScoreEntity.TABLE_NAME}")
-    fun getAllScores():List<GameScoreEntity>
+    @Query("SELECT * FROM ${GameScoreEntity.TABLE_NAME} " +
+            "Where ${GameScoreEntity.TABLE_NAME}.${GameScoreEntity.MAIN_PLAYER_COLUMN} == :id " +
+            "Order by ${GameScoreEntity.ADD_PLAYER_COLUMN}")
+    fun getAllScores(id:Int):List<GameScoreEntity>
+
 }
