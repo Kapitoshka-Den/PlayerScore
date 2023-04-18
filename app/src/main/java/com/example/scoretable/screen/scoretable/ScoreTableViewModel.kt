@@ -1,22 +1,17 @@
 package com.example.scoretable.screen.scoretable
 
-import android.util.Log
-import androidx.compose.runtime.collectAsState
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.scoretable.data.database.players.PlayerDao
 import com.example.scoretable.data.database.players.entites.GameScoreEntity
 import com.example.scoretable.data.database.players.entites.PlayerEntity
+import com.example.scoretable.domain.models.PlayerPlace
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.yield
 import javax.inject.Inject
 
 @HiltViewModel
@@ -31,6 +26,11 @@ class ScoreTableViewModel @Inject constructor(private val playerDao: PlayerDao) 
     private val _loadingState = MutableStateFlow(ScoreTableState.LoadingState().isLoad)
     val loadingState = _loadingState.asStateFlow()
 
+    private val _placesState = MutableStateFlow(ScoreTableState.ScoreState().playerPlaces)
+    val placesState = _placesState.asStateFlow()
+
+    private val _isNullScoresMoreOne = MutableStateFlow(false)
+    val isNullScoresMoreOne = _isNullScoresMoreOne.asStateFlow()
 
     fun changeScore(gameScore: GameScoreEntity, newScore: String) {
         viewModelScope.launch(Dispatchers.Default) {
@@ -41,7 +41,7 @@ class ScoreTableViewModel @Inject constructor(private val playerDao: PlayerDao) 
             _scoreState.update {
                 _playerState.value.associate { item -> item.Id to playerDao.getAllScores(item.Id) }
             }
-
+            formPlaces()
         }
     }
 
@@ -72,13 +72,25 @@ class ScoreTableViewModel @Inject constructor(private val playerDao: PlayerDao) 
 
 
             _playerState.update { playerDao.getAllPlayers().toMutableList() }
-            _loadingState.update { false }
             _scoreState.update {
                 _playerState.value.associate { item -> item.Id to playerDao.getAllScores(item.Id) }
             }
-            delay(3000)
+            formPlaces()
+            _loadingState.update { false }
         }
+    }
 
-
+    private fun formPlaces() {
+        val sortedScores = _scoreState.value.map { item ->
+            PlayerPlace(
+                Id = item.key,
+                Score = item.value.sumOf { items -> items.Score ?: 0 })
+        }.sortedByDescending { item -> item.Score }.toMutableList()
+        val sortedScoresWithPlaces = sortedScores.map { item -> item.copy(Place = (sortedScores.indexOf(item) + 1)) }.toMutableList()
+        _placesState.update {
+            sortedScoresWithPlaces
+        }
+        _isNullScoresMoreOne.update { _scoreState.value.values.filter { item -> item.filter { score -> score.Score != null }.size >= 6 }.size < 7 }
     }
 }
+

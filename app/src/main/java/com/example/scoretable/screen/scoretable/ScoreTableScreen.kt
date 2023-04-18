@@ -1,6 +1,7 @@
 package com.example.scoretable.screen.scoretable
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.scrollable
@@ -21,13 +22,18 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.focusTarget
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.scoretable.ui.theme.Bronze
+import com.example.scoretable.ui.theme.Gold
+import com.example.scoretable.ui.theme.Silver
 
 @Composable
 fun ScoreTableScreen(viewModel: ScoreTableViewModel = hiltViewModel()) {
@@ -35,7 +41,11 @@ fun ScoreTableScreen(viewModel: ScoreTableViewModel = hiltViewModel()) {
     val isLoading = viewModel.loadingState.collectAsState().value
     val playerList = viewModel.playerState.collectAsState().value
     val scoreList = viewModel.scoreState.collectAsState().value
+    val placesList = viewModel.placesState.collectAsState().value
+    val isNullScoresMoreOne = viewModel.isNullScoresMoreOne.collectAsState().value
+
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
 
     LaunchedEffect(key1 = Unit) {
         viewModel.loadData()
@@ -129,51 +139,77 @@ fun ScoreTableScreen(viewModel: ScoreTableViewModel = hiltViewModel()) {
                         val score = remember {
                             mutableStateOf(if (scores.Score == null) "" else scores.Score.toString())
                         }
-
-                        TextField(
-                            value = score.value,
-                            onValueChange = {
-                                viewModel.changeScore(scores, it)
-                                score.value = it
-                            },
-                            colors = TextFieldDefaults.textFieldColors(
-                                backgroundColor = if (scores.MainPlayerId == scores.AdditionalPlayerId) Color.Black else Color.Transparent
-                            ),
-                            keyboardOptions = KeyboardOptions.Default.copy(
-                                keyboardType = KeyboardType.Number,
-                                imeAction = ImeAction.Next
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onNext = { focusManager.moveFocus(FocusDirection.Right) }),
-                            readOnly = (scores.MainPlayerId == scores.AdditionalPlayerId),
-                            modifier = Modifier
-                                .border(color = Color.Black, width = 3.dp)
-                                .width(50.dp)
-                                .height(50.dp),
-                        )
+                        if (scores.MainPlayerId == scores.AdditionalPlayerId)
+                            Text(
+                                text = "",
+                                Modifier
+                                    .background(Color.Black)
+                                    .width(50.dp)
+                                    .height(50.dp)
+                            )
+                        else
+                            TextField(
+                                value = score.value,
+                                onValueChange = {
+                                    if (it.isNotEmpty() && it.toInt() >= 6) {
+                                        Toast.makeText(
+                                            context,
+                                            "Введите значение от 0 до 5",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    } else {
+                                        viewModel.changeScore(scores, it)
+                                        score.value = it
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions.Default.copy(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { focusManager.moveFocus(FocusDirection.Right) }),
+                                modifier = Modifier
+                                    .border(color = Color.Black, width = 3.dp)
+                                    .width(50.dp)
+                                    .height(50.dp),
+                            )
                     }
 
                     Text(
-                        text = scoreList[playerEntity.Id]!!.sumOf { item -> item.Score ?: 0 }.toString(),
+                        text = scoreList[playerEntity.Id]!!.sumOf { item -> item.Score ?: 0 }
+                            .toString(),
                         modifier = Modifier
                             .border(color = Color.Black, width = 3.dp)
                             .width(150.dp)
                             .height(50.dp)
                             .wrapContentHeight(align = CenterVertically),
                         textAlign = TextAlign.Center,
-                        color = if(scoreList[playerEntity.Id]
-                                ?.filter { item -> item.Score == null }?.size!! >= 2) Color.White else Color.Black
+                        color = if (scoreList[playerEntity.Id]
+                                ?.filter { item -> item.Score == null }?.size!! >= 2
+                        ) Color.White else Color.Black
                     )
-                    Log.e(playerEntity.Id.toString(),(scoreList[playerEntity.Id]
-                            ?.filter { item -> item.Score == null }?.size.toString()))
-                    Text(
-                        text = "", modifier = Modifier
+                    Box(
+                        modifier = Modifier
                             .border(color = Color.Black, width = 3.dp)
-                            .width(100.dp)
-                            .height(50.dp)
-                            .wrapContentHeight(align = CenterVertically),
-                        textAlign = TextAlign.Center
-                    )
+                            .background(
+                                when (placesList.firstOrNull { item -> item.Id == playerEntity.Id }?.Place) {
+                                    1 -> Gold
+                                    2 -> Silver
+                                    3 -> Bronze
+                                    else -> Color.White
+                                }
+                            )
+                    ) {
+                        Text(
+                            text = placesList.firstOrNull { item -> item.Id == playerEntity.Id }?.Place.toString(),
+                            modifier = Modifier
+                                .width(100.dp)
+                                .height(50.dp)
+                                .wrapContentHeight(align = CenterVertically),
+                            textAlign = TextAlign.Center,
+                            color = if (isNullScoresMoreOne) Color.White else Color.Black
+                        )
+                    }
                 }
             }
         }
