@@ -192,12 +192,14 @@ fun ScoreTableScreen(viewModel: ScoreTableViewModel = hiltViewModel()) {
                         modifier = Modifier
                             .border(color = Color.Black, width = 3.dp)
                             .background(
-                                when (placesList.firstOrNull { item -> item.Id == playerEntity.Id }?.Place) {
-                                    1 -> Gold
-                                    2 -> Silver
-                                    3 -> Bronze
-                                    else -> Color.White
-                                }
+                                if (isNullScoresMoreOne) Color.White
+                                else
+                                    when (placesList.firstOrNull { item -> item.Id == playerEntity.Id }?.Place) {
+                                        1 -> Gold
+                                        2 -> Silver
+                                        3 -> Bronze
+                                        else -> Color.White
+                                    }
                             )
                     ) {
                         Text(
